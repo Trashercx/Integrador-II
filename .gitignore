@@ -1,0 +1,28 @@
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# PHP y entorno
+.env
+/vendor
+node_modules/
+*.log
+
+# Archivos locales
+*.sqlite
+*.bak
+*.zip
+
+# XAMPP / configuraciones personales
+xampp/
+*.ini
+
+# VSCode
+.vscode/
+/images/
+/fpdf/*.pdf
+
+# Configuración con API keys
+config.php
+# Eliminar el log
+log_stripe.txt

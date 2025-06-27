@@ -1,0 +1,247 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+
+
+
+* {
+
+  margin: 0;
+
+  padding: 0;
+
+  scroll-behavior: smooth;
+
+  font-family: "Poppins", sans-serif;
+
+}
+
+
+
+body {
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    min-height: 100vh;
+
+    overflow: hidden;
+
+    background-image: url('../view/images/fondo2.jpg');
+
+    background-position: center;
+
+    background-size: cover;
+
+    background-attachment: fixed;
+
+}
+
+
+
+body::before {
+
+    content: '';
+
+    position: absolute;
+
+    left: 0;
+
+    top: 0;
+
+    width: 100%;
+
+    height: 100%;
+
+    background: #0000004e;
+
+}
+
+
+
+.form-container {
+
+    max-width: 400px;
+
+    padding: 50px 20px;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    background: #ffffff00;
+
+    backdrop-filter: blur(20px);
+
+    box-sizing: border-box;
+
+    box-shadow: 0px 0px 10px 0px #33333331;
+
+    border-radius: 12px;
+
+    border: 1px solid #ffffff1f;
+
+}
+
+
+
+.form-container .form {
+
+    text-align: center;
+
+
+
+}
+
+
+
+.form-container .form h2 {
+
+    margin-bottom: 40px;
+
+    color: #fff;
+
+
+
+}
+
+
+
+.form-container .form .input-group {
+
+    display: flex;
+
+    align-items: center;
+
+    border: 1px solid #ffffff63;
+
+    border-radius: 5px;
+
+    margin-bottom: 10px;
+
+    overflow: hidden;
+
+}
+
+
+
+.form-container .form .input-group input {
+
+    width: 280px;
+
+    border: 0;
+
+    outline: none;
+
+    padding: 10px 10px;
+
+    color: #fff;
+
+    background: transparent;
+
+}
+
+
+
+.form-container .form .input-group input::placeholder {
+
+    color: #fff;
+
+}
+
+
+
+.form-container .form .input-group label {
+
+    width: 50px;
+
+    color: #fff;
+
+}
+
+
+
+.form-container .form .space-between {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-top: 20px;
+
+}
+
+
+
+.form-container .form .remember {
+
+    font-size: 11px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 3px;
+
+}
+
+
+
+.form-container .form .remember label {
+
+    cursor: pointer;
+
+    user-select: none;
+
+    color: #fff;
+
+}
+
+
+
+.form-container .form a {
+
+    color: #fff;
+
+    text-decoration: none;
+
+    font-size: 11px;
+
+}
+
+
+
+.form-container .form button {
+
+    width: 100%;
+
+    margin-top: 15px;
+
+    padding: 8px 20px;
+
+    border-radius: 6px;
+
+    border: 0;
+
+    outline: none;
+
+    font-weight: bold;
+
+    margin-bottom: 20px;
+
+    background: #fff;
+
+    cursor: pointer;
+
+    transition: all 300ms ease;
+
+}
+
+.form-container button:hover{
+
+    background: #a7c8ca;
+
+}
