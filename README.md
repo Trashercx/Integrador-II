@@ -1,9 +1,8 @@
-# Integrador II - Sistema de Ventas en linea y stock
+#Sistema de Ventas en linea e inventario
 
-## 📋 Descripción
 Sistema web completo con integración de pagos mediante Stripe, desarrollado en PHP con funcionalidades de checkout y procesamiento de pagos seguros.
 
-## 🛠️ Tecnologías Utilizadas
+## LIBRERIAS
 - **Frontend**: HTML5, CSS3, JavaScript
 - **Backend**: PHP 8.x
 - **Base de Datos**: MySQL
@@ -14,7 +13,7 @@ Sistema web completo con integración de pagos mediante Stripe, desarrollado en 
   - SweetAlert2
   - FPDF (para reportes)
 
-## 📦 Instalación
+## Instalación
 
 ### Requisitos Previos
 - XAMPP (PHP 8.x, MySQL, Apache)
@@ -63,7 +62,7 @@ $stripe_publishable_key = 'pk_test_TU_PUBLISHABLE_KEY_AQUI';
 ?>
 ```
 
-#### 🔑 Obtener API Keys de Stripe
+#### Obtener API Keys de Stripe
 1. Regístrate en [Stripe](https://stripe.com)
 2. Ve a **Developers > API keys**
 3. Copia tus keys de **Test mode**:
@@ -77,7 +76,7 @@ $stripe_publishable_key = 'pk_test_TU_PUBLISHABLE_KEY_AQUI';
 chmod 755 log_stripe.txt
 ```
 
-## 🚀 Uso del Sistema
+## Uso del Sistema
 
 ### Acceso a la Aplicación
 1. Abre tu navegador
@@ -103,7 +102,7 @@ El archivo `config.php` contiene información sensible y está excluido del repo
 - Credenciales de base de datos
 - Configuraciones del servidor
 
-## 📁 Estructura del Proyecto
+##  Estructura del Proyecto
 ```
 Integrador_II/
 ├── config.example.php      # Template de configuración
@@ -119,7 +118,7 @@ Integrador_II/
 └── fpdf/                  # Librería para PDFs
 ```
 
-## 🐛 Solución de Problemas
+##  Solución de Problemas
 
 ### Error: "Class 'Stripe\Stripe' not found"
 ```bash
@@ -139,7 +138,7 @@ composer require stripe/stripe-php
 - Verifica que uses las keys correctas (test/live)
 - Confirma que las keys estén bien configuradas en `config.php`
 
-## 🤝 Contribuir
+##  Contribuir
 
 1. Fork el proyecto
 2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
@@ -147,7 +146,7 @@ composer require stripe/stripe-php
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
 
-## 📝 Notas de Desarrollo
+##  Notas de Desarrollo
 
 ### Para Desarrolladores
 - El sistema usa **keys de prueba** de Stripe por defecto
@@ -159,14 +158,14 @@ composer require stripe/stripe-php
 - CVV: cualquier número de 3 dígitos
 - Fecha: cualquier fecha futura
 
-## 📄 Licencia
+##  Licencia
 Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
 
-## 👨‍💻 Autores
+##  Autores
 Curso INTEGRADOR
 
 
-## 🆘 Soporte
+##  Soporte
 Si tienes problemas o preguntas:
 1. Revisa la sección [Solución de Problemas](#-solución-de-problemas)
 2. Abre un [Issue](https://github.com/Trashercx/Integrador-II/issues)
