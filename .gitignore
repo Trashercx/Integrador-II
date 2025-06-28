@@ -22,7 +22,11 @@ xampp/
 /images/
 /fpdf/*.pdf
 
+!config.example.php
+!bd/conexion.example.php
 # Configuración con API keys
 config.php
+bd/conexion.php
+
 # Eliminar el log
 log_stripe.txt
