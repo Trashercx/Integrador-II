@@ -4,32 +4,45 @@ require_once '../bd/conexion.php';
 require_once '../fpdf/fpdf.php';
 require_once '../config.php';
 
-
-
-// Leer datos desde Stripe (sesión) o desde JSON
+// Leer datos desde Stripe, PayPal, o JSON directo
 $data = json_decode(file_get_contents("php://input"), true);
-$isStripe = false;
+$isPasarela = false;
+$metodo_pago_origen = 'contraentrega'; // por defecto
 
+// Verificar si vienen datos de Stripe
 if (!$data && isset($_SESSION['stripe_checkout_data'])) {
-    $data = $_SESSION['stripe_checkout_data']; // ya es array
-    $isStripe = true;
-    
-} else {
-    
+    $data = $_SESSION['stripe_checkout_data'];
+    $isPasarela = true;
+    $metodo_pago_origen = 'tarjeta';
 }
 
+// Verificar si vienen datos de PayPal
+if (!$data && isset($_SESSION['paypal_checkout_data'])) {
+    $data = $_SESSION['paypal_checkout_data'];
+    $isPasarela = true;
+    $metodo_pago_origen = 'paypal';
+}
 
 if (!isset($_SESSION['usuario_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Usuario no autenticado']);
-    exit;
+    if ($isPasarela) {
+        header('Location: ../view/login.php');
+        exit;
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Usuario no autenticado']);
+        exit;
+    }
 }
 
 $id_usuario = $_SESSION['usuario_id'];
 $carrito = json_decode($_COOKIE['carrito'] ?? '[]', true);
-
 if (empty($carrito)) {
-    echo json_encode(['success' => false, 'message' => 'Carrito vacío']);
-    exit;
+    if ($isPasarela) {
+        header('Location: ../view/checkout.php?error=carrito_vacio');
+        exit;
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Carrito vacío']);
+        exit;
+    }
 }
 
 $subtotal = array_reduce($carrito, fn($sum, $i) => $sum + ($i['precio'] * $i['cantidad']), 0);
@@ -44,14 +57,11 @@ $total = $subtotal + $envio;
 $conn->begin_transaction();
 
 try {
-    // Insertar compra
     $stmt = $conn->prepare("INSERT INTO compras (id_usuario, fecha_compra, estado) VALUES (?, NOW(), 'pendiente')");
     $stmt->bind_param("i", $id_usuario);
     $stmt->execute();
     $id_compra = $conn->insert_id;
-   
 
-    // Insertar detalle y actualizar stock
     $stmt = $conn->prepare("INSERT INTO detalle_compra (id_compra, id_producto, cantidad, precio_unitario) VALUES (?, ?, ?, ?)");
     $stmt_stock = $conn->prepare("UPDATE productos SET stock = stock - ? WHERE id_producto = ? AND stock >= ?");
 
@@ -69,13 +79,11 @@ try {
         if ($stmt_stock->affected_rows === 0) {
             throw new Exception("❌ Stock insuficiente para ID: $id_producto");
         }
-        
     }
 
-    // Insertar envío
     $direccion = $data['direccion'];
     $ciudad = $data['ciudad'];
-    $distrito = $data['distrito'];
+    $distrito = $data['distrito'] ?? $data['ciudad']; // Fallback si no hay distrito
     $telefono = $data['telefono'] ?? 'No proporcionado';
     $codigo_postal = '00000';
     $estado_envio = 'pendiente';
@@ -83,24 +91,53 @@ try {
     $stmt = $conn->prepare("INSERT INTO envio (id_compra, direccion, ciudad, codigo_postal, estado) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("issss", $id_compra, $direccion, $ciudad, $codigo_postal, $estado_envio);
     $stmt->execute();
-    
 
-    // Insertar pago
-    $metodo = $data['metodo_pago'] ?? 'desconocido';
-    $stmt = $conn->prepare("INSERT INTO pagos (id_compra, monto, metodo_pago, fecha_pago) VALUES (?, ?, ?, NOW())");
-    $stmt->bind_param("ids", $id_compra, $total, $metodo);
+    // Determinar método de pago y preparar datos adicionales
+    $metodo = $data['metodo_pago'] ?? $metodo_pago_origen;
+    $paypal_transaction_id = null;
+    $paypal_order_id = null;
+    $stripe_session_id = null;
+
+    // Si es PayPal, obtener IDs de transacción
+    if ($metodo_pago_origen === 'paypal' && isset($data['paypal_transaction_id'])) {
+        $paypal_transaction_id = $data['paypal_transaction_id'];
+        $paypal_order_id = $data['paypal_order_id'] ?? null;
+    }
+
+    // Si es Stripe, obtener session ID
+    if ($metodo_pago_origen === 'tarjeta' && isset($data['stripe_session_id'])) {
+        $stripe_session_id = $data['stripe_session_id'];
+    }
+
+    // Insertar pago con información adicional de pasarelas
+    if ($paypal_transaction_id || $stripe_session_id) {
+        // Verificar si la tabla pagos tiene las columnas para PayPal/Stripe
+        $stmt = $conn->prepare("SHOW COLUMNS FROM pagos LIKE 'paypal_transaction_id'");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $has_paypal_columns = $result->num_rows > 0;
+
+        if ($has_paypal_columns) {
+            $stmt = $conn->prepare("INSERT INTO pagos (id_compra, monto, metodo_pago, fecha_pago, paypal_transaction_id, paypal_order_id, stripe_session_id) VALUES (?, ?, ?, NOW(), ?, ?, ?)");
+            $stmt->bind_param("idssss", $id_compra, $total, $metodo, $paypal_transaction_id, $paypal_order_id, $stripe_session_id);
+        } else {
+            // Tabla no tiene columnas de pasarelas, usar inserción básica
+            $stmt = $conn->prepare("INSERT INTO pagos (id_compra, monto, metodo_pago, fecha_pago) VALUES (?, ?, ?, NOW())");
+            $stmt->bind_param("ids", $id_compra, $total, $metodo);
+        }
+    } else {
+        // Pago contraentrega
+        $stmt = $conn->prepare("INSERT INTO pagos (id_compra, monto, metodo_pago, fecha_pago) VALUES (?, ?, ?, NOW())");
+        $stmt->bind_param("ids", $id_compra, $total, $metodo);
+    }
     $stmt->execute();
-    
 
-    // Obtener DNI
     $stmt = $conn->prepare("SELECT dni FROM usuarios WHERE id_usuario = ?");
     $stmt->bind_param("i", $id_usuario);
     $stmt->execute();
     $result = $stmt->get_result();
     $dni_usuario = ($row = $result->fetch_assoc()) ? $row['dni'] : '---------------';
 
-    // Generar PDF 
-    
     $pdf = new FPDF();
     $pdf->AddPage();
     $pdf->SetFont('Arial','B',12);
@@ -119,9 +156,16 @@ try {
     $pdf->Cell(0, 6, utf8_decode("DNI: $dni_usuario     Fecha: ") . date('d/m/Y'), 0, 1);
     $pdf->Cell(0, 6, utf8_decode("Dirección: $direccion, $distrito, $ciudad"), 0, 1);
     $pdf->Cell(0, 6, utf8_decode("Teléfono: $telefono"), 0, 1);
+    
+    // Agregar información del método de pago en el PDF
+    if ($metodo === 'paypal' && $paypal_transaction_id) {
+        $pdf->Cell(0, 6, utf8_decode("PayPal ID: $paypal_transaction_id"), 0, 1);
+    } elseif ($metodo === 'tarjeta' && $stripe_session_id) {
+        $pdf->Cell(0, 6, utf8_decode("Stripe Session: " . substr($stripe_session_id, 0, 20) . "..."), 0, 1);
+    }
+    
     $pdf->Ln(3);
 
-    // Tabla productos
     $pdf->SetFont('Arial','B',10);
     $pdf->Cell(25,8,utf8_decode('Código'),1);
     $pdf->Cell(20,8,'Cant.',1);
@@ -146,7 +190,6 @@ try {
         $pdf->Ln();
     }
 
-    // Totales
     $igv = $subtotal * 0.18;
     $total_final = $subtotal + $igv + $envio;
 
@@ -167,19 +210,37 @@ try {
     $pdf->Cell(35,8,'TOTAL',0,0);
     $pdf->Cell(0,8,'S/. ' . number_format($total_final,2),0,1,'R');
     $pdf->Ln(5);
-    $pdf->Cell(0,10,utf8_decode('CANCELADO'),0,1,'C');
+    
+    // Mostrar estado del pago según el método
+    $estado_pago = match($metodo) {
+        'paypal', 'tarjeta' => 'PAGADO',
+        'contraentrega' => 'PENDIENTE DE PAGO',
+        default => 'CANCELADO'
+    };
+    $pdf->Cell(0,10,utf8_decode($estado_pago),0,1,'C');
 
     $archivo_pdf = $pdf->Output('S');
     $stmt = $conn->prepare("INSERT INTO comprobante (id_compra, archivo_pdf, fecha_emision) VALUES (?, ?, NOW())");
     $stmt->bind_param("ib", $id_compra, $archivo_pdf);
     $stmt->send_long_data(1, $archivo_pdf);
     $stmt->execute();
-    
 
     $conn->commit();
+    
+    // Limpiar carrito y datos de sesión
     setcookie('carrito', '', time() - 3600, "/");
     unset($_COOKIE['carrito']);
-    unset($_SESSION['stripe_checkout_data']);
+    
+    // Limpiar datos específicos de cada pasarela
+    if (isset($_SESSION['stripe_checkout_data'])) {
+        unset($_SESSION['stripe_checkout_data']);
+    }
+    if (isset($_SESSION['paypal_checkout_data'])) {
+        unset($_SESSION['paypal_checkout_data']);
+    }
+    if (isset($_SESSION['paypal_order_id'])) {
+        unset($_SESSION['paypal_order_id']);
+    }
 
     $_SESSION['ultima_compra'] = [
         'id_compra' => $id_compra,
@@ -187,13 +248,11 @@ try {
         'total' => $total,
         'fecha' => date('d/m/Y'),
         'nombre' => $_SESSION['usuario_nombre'] ?? 'Cliente',
-        'direccion' => "$direccion, $distrito, $ciudad"
+        'direccion' => "$direccion, $distrito, $ciudad",
+        'paypal_transaction_id' => $paypal_transaction_id
     ];
 
-    
-
-    // Redirigir si viene de Stripe
-    if ($isStripe) {
+    if ($isPasarela) {
         header("Location: ../view/confirmacion.php?id_compra=$id_compra");
         exit;
     } else {
@@ -203,5 +262,15 @@ try {
 
 } catch (Exception $e) {
     $conn->rollback();
-    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    
+    // Log del error para debugging
+    error_log("Error en procesar_compra.php: " . $e->getMessage());
+    
+    if ($isPasarela) {
+        header("Location: ../view/checkout.php?error=" . urlencode($e->getMessage()));
+        exit;
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
 }
+?>
