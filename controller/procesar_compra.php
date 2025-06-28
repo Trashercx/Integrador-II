@@ -7,20 +7,20 @@ require_once '../config.php';
 // Leer datos desde Stripe, PayPal, o JSON directo
 $data = json_decode(file_get_contents("php://input"), true);
 $isPasarela = false;
-$metodo_pago_origen = 'contraentrega'; // por defecto
+$metodo_pago_origen = 'Efectivo'; // por defecto
 
 // Verificar si vienen datos de Stripe
 if (!$data && isset($_SESSION['stripe_checkout_data'])) {
     $data = $_SESSION['stripe_checkout_data'];
     $isPasarela = true;
-    $metodo_pago_origen = 'tarjeta';
+    $metodo_pago_origen = 'Tarjeta';
 }
 
 // Verificar si vienen datos de PayPal
 if (!$data && isset($_SESSION['paypal_checkout_data'])) {
     $data = $_SESSION['paypal_checkout_data'];
     $isPasarela = true;
-    $metodo_pago_origen = 'paypal';
+    $metodo_pago_origen = 'PayPal';
 }
 
 if (!isset($_SESSION['usuario_id'])) {
@@ -92,20 +92,33 @@ try {
     $stmt->bind_param("issss", $id_compra, $direccion, $ciudad, $codigo_postal, $estado_envio);
     $stmt->execute();
 
-    // Determinar método de pago y preparar datos adicionales
-    $metodo = $data['metodo_pago'] ?? $metodo_pago_origen;
+    // CORRECCIÓN: Determinar método de pago correctamente
+    $metodo_pago_raw = $data['metodo_pago'] ?? $metodo_pago_origen;
+    
+    // Normalizar el método de pago para que coincida con el ENUM de la BD
+    $metodo_pago_final = match(strtolower($metodo_pago_raw)) {
+        'tarjeta', 'credit-card', 'stripe' => 'Tarjeta',
+        'paypal' => 'PayPal',
+        'cash', 'efectivo', 'contraentrega' => 'Efectivo',
+        default => 'Efectivo'
+    };
+
+    // Debug: Log para verificar qué método se está usando
+    error_log("Método de pago recibido: " . $metodo_pago_raw);
+    error_log("Método de pago final: " . $metodo_pago_final);
+
     $paypal_transaction_id = null;
     $paypal_order_id = null;
     $stripe_session_id = null;
 
     // Si es PayPal, obtener IDs de transacción
-    if ($metodo_pago_origen === 'paypal' && isset($data['paypal_transaction_id'])) {
+    if ($metodo_pago_final === 'PayPal' && isset($data['paypal_transaction_id'])) {
         $paypal_transaction_id = $data['paypal_transaction_id'];
         $paypal_order_id = $data['paypal_order_id'] ?? null;
     }
 
     // Si es Stripe, obtener session ID
-    if ($metodo_pago_origen === 'tarjeta' && isset($data['stripe_session_id'])) {
+    if ($metodo_pago_final === 'Tarjeta' && isset($data['stripe_session_id'])) {
         $stripe_session_id = $data['stripe_session_id'];
     }
 
@@ -119,18 +132,24 @@ try {
 
         if ($has_paypal_columns) {
             $stmt = $conn->prepare("INSERT INTO pagos (id_compra, monto, metodo_pago, fecha_pago, paypal_transaction_id, paypal_order_id, stripe_session_id) VALUES (?, ?, ?, NOW(), ?, ?, ?)");
-            $stmt->bind_param("idssss", $id_compra, $total, $metodo, $paypal_transaction_id, $paypal_order_id, $stripe_session_id);
+            $stmt->bind_param("idssss", $id_compra, $total, $metodo_pago_final, $paypal_transaction_id, $paypal_order_id, $stripe_session_id);
         } else {
             // Tabla no tiene columnas de pasarelas, usar inserción básica
             $stmt = $conn->prepare("INSERT INTO pagos (id_compra, monto, metodo_pago, fecha_pago) VALUES (?, ?, ?, NOW())");
-            $stmt->bind_param("ids", $id_compra, $total, $metodo);
+            $stmt->bind_param("ids", $id_compra, $total, $metodo_pago_final);
         }
     } else {
-        // Pago contraentrega
+        // Pago contraentrega o cualquier otro método
         $stmt = $conn->prepare("INSERT INTO pagos (id_compra, monto, metodo_pago, fecha_pago) VALUES (?, ?, ?, NOW())");
-        $stmt->bind_param("ids", $id_compra, $total, $metodo);
+        $stmt->bind_param("ids", $id_compra, $total, $metodo_pago_final);
     }
+    
     $stmt->execute();
+    
+    // Verificar si el pago se insertó correctamente
+    if ($stmt->affected_rows === 0) {
+        throw new Exception("Error al insertar el método de pago: " . $metodo_pago_final);
+    }
 
     $stmt = $conn->prepare("SELECT dni FROM usuarios WHERE id_usuario = ?");
     $stmt->bind_param("i", $id_usuario);
@@ -158,9 +177,9 @@ try {
     $pdf->Cell(0, 6, utf8_decode("Teléfono: $telefono"), 0, 1);
     
     // Agregar información del método de pago en el PDF
-    if ($metodo === 'paypal' && $paypal_transaction_id) {
+    if ($metodo_pago_final === 'PayPal' && $paypal_transaction_id) {
         $pdf->Cell(0, 6, utf8_decode("PayPal ID: $paypal_transaction_id"), 0, 1);
-    } elseif ($metodo === 'tarjeta' && $stripe_session_id) {
+    } elseif ($metodo_pago_final === 'Tarjeta' && $stripe_session_id) {
         $pdf->Cell(0, 6, utf8_decode("Stripe Session: " . substr($stripe_session_id, 0, 20) . "..."), 0, 1);
     }
     
@@ -212,9 +231,9 @@ try {
     $pdf->Ln(5);
     
     // Mostrar estado del pago según el método
-    $estado_pago = match($metodo) {
-        'paypal', 'tarjeta' => 'PAGADO',
-        'contraentrega' => 'PENDIENTE DE PAGO',
+    $estado_pago = match($metodo_pago_final) {
+        'PayPal', 'Tarjeta' => 'PAGADO',
+        'Efectivo' => 'PENDIENTE DE PAGO',
         default => 'CANCELADO'
     };
     $pdf->Cell(0,10,utf8_decode($estado_pago),0,1,'C');
@@ -244,7 +263,7 @@ try {
 
     $_SESSION['ultima_compra'] = [
         'id_compra' => $id_compra,
-        'metodo_pago' => $metodo,
+        'metodo_pago' => $metodo_pago_final,
         'total' => $total,
         'fecha' => date('d/m/Y'),
         'nombre' => $_SESSION['usuario_nombre'] ?? 'Cliente',

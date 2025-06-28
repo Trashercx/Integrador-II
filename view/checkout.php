@@ -155,27 +155,27 @@ if (isset($_SESSION['usuario_id'])) {
             <div id="payment-section" class="profile-card checkout-section">
                 <h4 class="mb-4">Método de pago</h4>
                 
-                <div class="payment-option selected" onclick="selectPayment('credit-card')">
+                <div class="payment-option selected" onclick="selectPayment('Tarjeta')">
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="payment" id="credit-card" value="credit-card" checked>
+                        <input class="form-check-input" type="radio" name="payment" id="credit-card" value="Tarjeta" checked>
                         <label class="form-check-label" for="credit-card">
                             <strong>Tarjeta de crédito/débito</strong>
                         </label>
                     </div>
                 </div>
                 
-                <div class="payment-option" onclick="selectPayment('paypal')">
+                <div class="payment-option" onclick="selectPayment('PayPal')">
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="payment" id="paypal" value="paypal">
+                        <input class="form-check-input" type="radio" name="payment" id="paypal" value="PayPal">
                         <label class="form-check-label" for="paypal">
                             <strong>PayPal</strong>
                         </label>
                     </div>
                 </div>
                 
-                <div class="payment-option" onclick="selectPayment('cash')">
+                <div class="payment-option" onclick="selectPayment('Efectivo')">
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="payment" id="cash" value="cash">
+                        <input class="form-check-input" type="radio" name="payment" id="cash" value="Efectivo">
                         <label class="form-check-label" for="cash">
                             <strong>Pago contra entrega</strong>
                         </label>
@@ -357,8 +357,8 @@ function updateReviewInfo() {
     
     const paymentMethod = document.querySelector('input[name="payment"]:checked');
     let paymentText = '';
-    if (paymentMethod.id === 'credit-card') paymentText = 'Tarjeta de crédito/débito';
-    else if (paymentMethod.id === 'paypal') paymentText = 'PayPal';
+    if (paymentMethod.value === 'Tarjeta') paymentText = 'Tarjeta de crédito/débito';
+    else if (paymentMethod.value === 'PayPal') paymentText = 'PayPal';
     else paymentText = 'Pago contra entrega';
     document.getElementById('review-payment').innerHTML = `<p>${paymentText}</p>`;
 }
@@ -380,11 +380,13 @@ function confirmOrder() {
         metodo_pago: metodo_pago
     };
     
-    if (metodo_pago === 'credit-card') {
+    console.log('Datos enviados:', data); // Debug
+    
+    if (metodo_pago === 'Tarjeta') {
         // Para tarjeta: guardar en sessionStorage y redirigir
         sessionStorage.setItem('datos_checkout', JSON.stringify(data));
         window.location.href = '/view/pago_tarjeta.php';
-    } else if (metodo_pago === 'paypal') {
+    } else if (metodo_pago === 'PayPal') {
         // Para PayPal: enviar datos al servidor ANTES de redirigir
         fetch('../controller/guardar_checkout_en_sesion_P.php', {
             method: 'POST',
@@ -411,7 +413,7 @@ function confirmOrder() {
                 text: 'Error de conexión. Intenta de nuevo.'
             });
         });
-    } else if (metodo_pago === 'cash') {
+    } else if (metodo_pago === 'Efectivo') {
         // Para contraentrega: procesar directamente
         fetch('../controller/procesar_compra.php', {
             method: 'POST',
@@ -420,6 +422,7 @@ function confirmOrder() {
         })
         .then(res => res.json())
         .then(response => {
+            console.log('Respuesta del servidor:', response); // Debug
             if (response.success) {
                 window.location.href = '/view/confirmacion.php?id_compra=' + response.id_compra;
             } else {
