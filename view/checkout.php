@@ -380,13 +380,39 @@ function confirmOrder() {
         metodo_pago: metodo_pago
     };
     
-    sessionStorage.setItem('datos_checkout', JSON.stringify(data));
-    
     if (metodo_pago === 'credit-card') {
+        // Para tarjeta: guardar en sessionStorage y redirigir
+        sessionStorage.setItem('datos_checkout', JSON.stringify(data));
         window.location.href = '/view/pago_tarjeta.php';
     } else if (metodo_pago === 'paypal') {
-        window.location.href = '/view/pago_paypal.php';
+        // Para PayPal: enviar datos al servidor ANTES de redirigir
+        fetch('../controller/guardar_checkout_en_sesion_P.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(response => {
+            if (response.success) {
+                window.location.href = '/view/pago_paypal.php';
+            } else {
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'Error', 
+                    text: response.message || 'Error al procesar los datos'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Error', 
+                text: 'Error de conexión. Intenta de nuevo.'
+            });
+        });
     } else if (metodo_pago === 'cash') {
+        // Para contraentrega: procesar directamente
         fetch('../controller/procesar_compra.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
