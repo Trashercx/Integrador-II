@@ -10,5 +10,9 @@ function esAdmin() {
 function obtenerNombreUsuario() {
     return $_SESSION['usuario_nombre'] ?? 'Invitado';
 }
+function obtenerIdUsuario() {
+    return $_SESSION['usuario_id'] ?? null;
+}
+
 ?>
 

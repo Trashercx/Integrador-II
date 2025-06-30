@@ -27,6 +27,131 @@ if ($carritoVacio) {
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/estilos.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* Estilos específicos para las opciones de pago mejoradas */
+        .payment-option {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .payment-option:hover {
+            border-color: #007bff;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .payment-option.selected {
+            border-color: #007bff;
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.2);
+        }
+        
+        .payment-option.selected::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+        }
+        
+        .payment-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .payment-icon {
+            flex-shrink: 0;
+            width: 60px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 8px;
+        }
+        
+        .payment-icon img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .payment-icon .cash-icon {
+            font-size: 24px;
+            color: #28a745;
+        }
+        
+        .payment-details {
+            flex: 1;
+        }
+        
+        .payment-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+        
+        .payment-description {
+            font-size: 14px;
+            color: #6c757d;
+            margin: 0;
+        }
+        
+        .payment-option .form-check-input {
+            width: 20px;
+            height: 20px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        
+        .payment-option .form-check-input:checked {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        
+        .payment-section-title {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .payment-section-title::before {
+            content: '💳';
+            font-size: 24px;
+        }
+        
+        .secure-payment-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #e8f5e8;
+            color: #155724;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 15px;
+        }
+        
+        .secure-payment-badge::before {
+            content: '🔒';
+        }
+    </style>
 </head>
 <body style="background-color: white;">
 <?php
@@ -151,35 +276,51 @@ if (isset($_SESSION['usuario_id'])) {
                 </div>
             </div>
 
-            <!-- Paso 3: Pago -->
+            <!-- Paso 3: Pago - SECCIÓN MEJORADA -->
             <div id="payment-section" class="profile-card checkout-section">
-                <h4 class="mb-4">Método de pago</h4>
+                <h4 class="payment-section-title">Método de pago</h4>
                 
                 <div class="payment-option selected" onclick="selectPayment('Tarjeta')">
-                    <div class="form-check">
+                    <div class="payment-content">
+                        <div class="payment-icon">
+                            <img src="img/Stripe.png" alt="Tarjeta" />
+                        </div>
+                        <div class="payment-details">
+                            <div class="payment-title">Tarjeta de crédito/débito</div>
+                            <p class="payment-description">Visa, Mastercard, American Express</p>
+                        </div>
                         <input class="form-check-input" type="radio" name="payment" id="credit-card" value="Tarjeta" checked>
-                        <label class="form-check-label" for="credit-card">
-                            <strong>Tarjeta de crédito/débito</strong>
-                        </label>
                     </div>
                 </div>
                 
                 <div class="payment-option" onclick="selectPayment('PayPal')">
-                    <div class="form-check">
+                    <div class="payment-content">
+                        <div class="payment-icon">
+                            <img src="img/PayPal.png" alt="PayPal" />
+                        </div>
+                        <div class="payment-details">
+                            <div class="payment-title">PayPal</div>
+                            <p class="payment-description">Paga de forma segura con tu cuenta PayPal</p>
+                        </div>
                         <input class="form-check-input" type="radio" name="payment" id="paypal" value="PayPal">
-                        <label class="form-check-label" for="paypal">
-                            <strong>PayPal</strong>
-                        </label>
                     </div>
                 </div>
                 
                 <div class="payment-option" onclick="selectPayment('Efectivo')">
-                    <div class="form-check">
+                    <div class="payment-content">
+                        <div class="payment-icon">
+                            <div class="cash-icon">💵</div>
+                        </div>
+                        <div class="payment-details">
+                            <div class="payment-title">Pago contra entrega</div>
+                            <p class="payment-description">Paga en efectivo al recibir tu pedido</p>
+                        </div>
                         <input class="form-check-input" type="radio" name="payment" id="cash" value="Efectivo">
-                        <label class="form-check-label" for="cash">
-                            <strong>Pago contra entrega</strong>
-                        </label>
                     </div>
+                </div>
+                
+                <div class="secure-payment-badge">
+                    Transacciones 100% seguras
                 </div>
                 
                 <div class="d-flex justify-content-between mt-4">
@@ -230,39 +371,46 @@ if (isset($_SESSION['usuario_id'])) {
                 <h4 class="mb-3">Resumen del pedido</h4>
 
                 <?php
-                $subtotal = 0;
+                $subtotalProductos = 0;
                 foreach ($carrito as $item) {
                     $itemTotal = $item['precio'] * $item['cantidad'];
-                    $subtotal += $itemTotal;
+                    $subtotalProductos += $itemTotal;
                     echo "<div class='order-summary-item'>
                             <span>" . htmlspecialchars($item['nombre']) . " × " . $item['cantidad'] . "</span>
                             <span>S/. " . number_format($itemTotal, 2) . "</span>
                         </div>";
                 }
-                $igv = $subtotal * 0.18;
-                $subtotalSinIGV = $subtotal - $igv;
                 ?>
 
                 <div class="order-summary-item">
-                    <span>Subtotal sin IGV</span>
-                    <span id="order-subtotal-sin-igv">S/. <?= number_format($subtotalSinIGV, 2) ?></span>
+                    <span>Subtotal productos</span>
+                    <span id="order-subtotal-productos">S/. <?= number_format($subtotalProductos, 2) ?></span>
                 </div>
-                <div class="order-summary-item">
-                    <span>IGV (18%)</span>
-                    <span id="order-igv">S/. <?= number_format($igv, 2) ?></span>
-                </div>
-                <!-- ELEMENTO SUBTOTAL AGREGADO PARA COMPATIBILIDAD -->
-                <div class="order-summary-item">
-                    <span>Subtotal</span>
-                    <span id="order-subtotal">S/. <?= number_format($subtotal, 2) ?></span>
-                </div>
+                
                 <div class="order-summary-item">
                     <span>Envío</span>
                     <span id="order-shipping">S/. 11.20</span>
                 </div>
+                
+                <?php 
+                $envioInicial = 11.20;
+                $subtotalTotal = $subtotalProductos + $envioInicial;
+                $igvIncluido = $subtotalTotal * 18 / 118; // IGV incluido en el total
+                ?>
+                
+                <div class="order-summary-item">
+                    <span>Subtotal</span>
+                    <span id="order-subtotal">S/. <?= number_format($subtotalTotal, 2) ?></span>
+                </div>
+                
+                <div class="order-summary-item text-muted">
+                    <span>IGV incluido (18%)</span>
+                    <span id="order-igv">S/. <?= number_format($igvIncluido, 2) ?></span>
+                </div>
+                
                 <div class="order-summary-item order-summary-total">
                     <span>Total</span>
-                    <span id="order-total">S/. <?= number_format($subtotal + 11.20, 2) ?></span>
+                    <span id="order-total">S/. <?= number_format($subtotalTotal, 2) ?></span>
                 </div>
 
                 <div class="input-group mb-3 mt-3">
@@ -290,13 +438,19 @@ function selectShipping(option) {
     else if (option === 'express') costoEnvio = 18.50;
     else costoEnvio = 0; // pickup es gratis
 
-    // Obtener subtotal actual (con IGV incluido)
-    const subtotalElement = document.getElementById('order-subtotal');
-    const subtotal = parseFloat(subtotalElement.textContent.replace('S/. ', '').replace(',', '')) || 0;
+    // Obtener subtotal de productos
+    const subtotalProductosElement = document.getElementById('order-subtotal-productos');
+    const subtotalProductos = parseFloat(subtotalProductosElement.textContent.replace('S/. ', '').replace(',', '')) || 0;
+    
+    // Calcular nuevos totales
+    const subtotalTotal = subtotalProductos + costoEnvio;
+    const igvIncluido = subtotalTotal * 18 / 118; // IGV incluido
 
     // Actualizar elementos del resumen
     document.getElementById('order-shipping').textContent = `S/. ${costoEnvio.toFixed(2)}`;
-    document.getElementById('order-total').textContent = `S/. ${(subtotal + costoEnvio).toFixed(2)}`;
+    document.getElementById('order-subtotal').textContent = `S/. ${subtotalTotal.toFixed(2)}`;
+    document.getElementById('order-igv').textContent = `S/. ${igvIncluido.toFixed(2)}`;
+    document.getElementById('order-total').textContent = `S/. ${subtotalTotal.toFixed(2)}`;
 }
 
 // Agregar event listeners para los radio buttons también
@@ -307,7 +461,14 @@ document.querySelectorAll('input[name="shipping"]').forEach(radio => {
 function selectPayment(option) {
     document.querySelectorAll('.payment-option').forEach(el => el.classList.remove('selected'));
     document.querySelector(`.payment-option[onclick="selectPayment('${option}')"]`).classList.add('selected');
-    document.getElementById(option).checked = true;
+    
+    // Actualizar el radio button correspondiente
+    const radioButtons = {
+        'Tarjeta': 'credit-card',
+        'PayPal': 'paypal', 
+        'Efectivo': 'cash'
+    };
+    document.getElementById(radioButtons[option]).checked = true;
 }
 
 function nextStep(nextSectionId) {
@@ -365,7 +526,11 @@ function updateReviewInfo() {
 
 function confirmOrder() {
     if (!document.getElementById('terms').checked) {
-        alert('Por favor acepta los términos y condiciones');
+        Swal.fire({
+            icon: 'warning',
+            title: 'Términos y condiciones',
+            text: 'Por favor acepta los términos y condiciones'
+        });
         return;
     }
     
@@ -414,20 +579,63 @@ function confirmOrder() {
             });
         });
     } else if (metodo_pago === 'Efectivo') {
+        // Mostrar loading
+        Swal.fire({
+            title: 'Procesando pedido...',
+            text: 'Por favor espera',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
         // Para contraentrega: procesar directamente
         fetch('../controller/procesar_compra.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+        })
         .then(response => {
             console.log('Respuesta del servidor:', response); // Debug
+            
+            // Cerrar el loading
+            Swal.close();
+            
             if (response.success) {
-                window.location.href = '/view/confirmacion.php?id_compra=' + response.id_compra;
+                // Mostrar mensaje de éxito y luego redirigir
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Pedido confirmado!',
+                    text: 'Tu pedido ha sido procesado correctamente',
+                    showConfirmButton: false,
+                    timer: 2000
+                }).then(() => {
+                    // AQUÍ ESTÁ LA CORRECCIÓN: Manejar la redirección manualmente
+                    window.location.href = '/view/confirmacion.php?id_compra=' + response.id_compra;
+                });
             } else {
-                Swal.fire({ icon: 'error', title: 'Error', text: response.message });
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'Error al procesar el pedido', 
+                    text: response.message || 'Ocurrió un error inesperado'
+                });
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.close();
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Error de conexión', 
+                text: 'No se pudo procesar el pedido. Intenta de nuevo.'
+            });
         });
     }
 }

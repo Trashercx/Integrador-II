@@ -4,10 +4,40 @@ require_once '../bd/conexion.php';
 require_once '../fpdf/fpdf.php';
 require_once '../config.php';
 
+// DEBUG: Log de información inicial
+error_log("=== INICIO PROCESAR_COMPRA ===");
+error_log("REQUEST_METHOD: " . $_SERVER['REQUEST_METHOD']);
+error_log("CONTENT_TYPE: " . ($_SERVER['CONTENT_TYPE'] ?? 'No definido'));
+error_log("HTTP_X_REQUESTED_WITH: " . ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? 'No definido'));
+error_log("POST data: " . print_r($_POST, true));
+error_log("JSON input: " . file_get_contents("php://input"));
+
 // Leer datos desde Stripe, PayPal, o JSON directo
-$data = json_decode(file_get_contents("php://input"), true);
+$json_input = file_get_contents("php://input");
+$data = json_decode($json_input, true);
 $isPasarela = false;
 $metodo_pago_origen = 'Efectivo'; // por defecto
+$esAjax = false; // Nueva variable para detectar peticiones AJAX
+
+// Detectar si es una petición AJAX
+$esAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') ||
+          (isset($_SERVER['CONTENT_TYPE']) && 
+           strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) ||
+          (isset($_SERVER['HTTP_ACCEPT']) && 
+           strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+          (!empty($json_input) && $json_input !== '{}');
+
+// Si no hay datos JSON, verificar si vienen por POST (para pagos en efectivo)
+if (!$data && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST)) {
+    $data = $_POST;
+    error_log("Usando datos POST para pago en efectivo");
+}
+
+// DEBUG: Log del estado actual
+error_log("esAjax: " . ($esAjax ? 'true' : 'false'));
+error_log("isPasarela: " . ($isPasarela ? 'true' : 'false'));
+error_log("data: " . print_r($data, true));
 
 // Verificar si vienen datos de Stripe
 if (!$data && isset($_SESSION['stripe_checkout_data'])) {
@@ -28,7 +58,11 @@ if (!isset($_SESSION['usuario_id'])) {
         header('Location: ../view/login.php');
         exit;
     } else {
-        echo json_encode(['success' => false, 'message' => 'Usuario no autenticado']);
+        if ($esAjax) {
+            echo json_encode(['success' => false, 'message' => 'Usuario no autenticado']);
+        } else {
+            header('Location: ../view/login.php');
+        }
         exit;
     }
 }
@@ -40,7 +74,11 @@ if (empty($carrito)) {
         header('Location: ../view/checkout.php?error=carrito_vacio');
         exit;
     } else {
-        echo json_encode(['success' => false, 'message' => 'Carrito vacío']);
+        if ($esAjax) {
+            echo json_encode(['success' => false, 'message' => 'Carrito vacío']);
+        } else {
+            header('Location: ../view/checkout.php?error=carrito_vacio');
+        }
         exit;
     }
 }
@@ -271,11 +309,29 @@ try {
         'paypal_transaction_id' => $paypal_transaction_id
     ];
 
-    if ($isPasarela) {
-        header("Location: ../view/confirmacion.php?id_compra=$id_compra");
+    // CORRECCIÓN PRINCIPAL: Nueva lógica de redirección con debugging
+    error_log("=== ANTES DE REDIRECCIÓN ===");
+    error_log("esAjax: " . ($esAjax ? 'true' : 'false'));
+    error_log("isPasarela: " . ($isPasarela ? 'true' : 'false'));
+    error_log("id_compra: " . $id_compra);
+    
+    // Verificar si ya se enviaron headers
+    if (headers_sent($filename, $linenum)) {
+        error_log("HEADERS YA ENVIADOS en $filename línea $linenum");
+        echo "Error: Headers ya enviados";
+        exit;
+    }
+    
+    if ($esAjax) {
+        // Si es una petición AJAX, devolver JSON
+        error_log("Devolviendo JSON response");
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'id_compra' => $id_compra]);
         exit;
     } else {
-        echo json_encode(['success' => true, 'id_compra' => $id_compra]);
+        // Si es una petición normal del navegador (incluye pagos en efectivo), redirigir
+        error_log("Intentando redirigir a confirmacion.php");
+        header("Location: ../view/confirmacion.php?id_compra=$id_compra");
         exit;
     }
 
@@ -284,12 +340,15 @@ try {
     
     // Log del error para debugging
     error_log("Error en procesar_compra.php: " . $e->getMessage());
+    error_log("esAjax en catch: " . ($esAjax ? 'true' : 'false'));
     
-    if ($isPasarela) {
-        header("Location: ../view/checkout.php?error=" . urlencode($e->getMessage()));
+    if ($esAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
         exit;
     } else {
-        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        header("Location: ../view/checkout.php?error=" . urlencode($e->getMessage()));
+        exit;
     }
 }
 ?>
