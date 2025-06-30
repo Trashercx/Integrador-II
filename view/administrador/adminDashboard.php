@@ -218,17 +218,74 @@ $productos = $fila3[0];
                     
                 </div>
 
-                
+             
+                <div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+    <h6 class="m-0 font-weight-bold text-primary">Reporte de Ventas Power BI</h6>
+    <button class="btn btn-outline-secondary btn-sm" onclick="imprimirReporte()">Imprimir PDF</button>
+</div>
 
-
+            <div class="card-body">
+                <div class="ratio ratio-16x9">
+                    <iframe 
+                        src="https://app.powerbi.com/view?r=eyJrIjoiYWRkYWRhZDctNGU4My00M2RiLWI4MzAtMDU2ZGZmM2ViNmIxIiwidCI6ImM0YTY2YzM0LTJiYjctNDUxZi04YmUxLWIyYzI2YTQzMDE1OCIsImMiOjR9"
+                        frameborder="0"
+                        allowfullscreen>
+                    </iframe>
+                </div>
             </div>
-            <!-- /.container-fluid -->
-
-
         </div>
     </div>
+</div>
+
+<!-- Continuación del código existente -->
+
+<script>
+async function imprimirReporte() {
+    const cardBody = document.querySelector('.card-body'); // contenedor donde está el iframe
+    if (!cardBody) {
+        alert('No se encontró el contenido del reporte.');
+        return;
+    }
+
+    // Mostrar alerta de carga
+    Swal.fire({
+        title: 'Generando PDF...',
+        text: 'Por favor espera unos segundos.',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    // Esperar para que el iframe termine de cargar (opcional, puedes ajustar delay)
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    html2canvas(cardBody).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jspdf.jsPDF({
+            orientation: 'landscape',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save('ReportePowerBI.pdf');
+        Swal.close();
+    }).catch(error => {
+        Swal.close();
+        alert('Error al generar el PDF: ' + error);
+    });
+}
+</script>
+
+
 
 </body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous">
